@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Microservicio de Clientes
+  cliente-service:
+    build: ./cliente-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-cliente:3306/cliente_db
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - bank-network
+    depends_on:
+      mysql-cliente:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+# Bases de datos
+    mysql-cliente:
+      image: mysql:8.0
+      environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: cliente_db
+      volumes:
+        - mysql-cliente-data:/var/lib/mysql
+      networks:
+        - bank-network
+      healthcheck:
+        test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+        interval: 5s
+        timeout: 10s
+        retries: 10
+  # Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
